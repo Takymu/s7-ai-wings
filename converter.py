@@ -9,8 +9,6 @@ def detect_encoding(filepath):
             result = chardet.detect(f.read())
         return result['encoding']
 
-    except FileNotFoundError:
-        return 'file not found'
     except Exception as e:
         return f'error: {e}'
 
