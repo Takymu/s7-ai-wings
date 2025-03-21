@@ -1,24 +1,26 @@
-import json
-import pandas as pd
-import chardet
+import csv
+import openpyxl
 
 
-def detect_encoding(filepath):
-    try:
-        with open(filepath, 'rb') as f:
-            result = chardet.detect(f.read())
-        return result['encoding']
+def word(obj):
+    return ''.join(i for i in obj if i.isalpha() or i == ' ')
 
-    except Exception as e:
-        return f'error: {e}'
-
+data = []
 try:
-    with open('data.json', 'r', encoding=detect_encoding('data.json')) as f:
-        data = json.load(f)
-        df = pd.DataFrame(data)
-        df.to_excel('data.xlsx', index=False)
+    with open('dataset', 'r', encoding='utf-8') as f:
+        reader = csv.reader(f, delimiter=',')
+        for row in reader:
+            row = [word(i) for i in row]
+            data.append(row)
+        print(data)
+except FileNotFoundError:
+    print(f"file is not found.")
+    exit()
 
-except Exception as e:
-    print(f'error: {e}')
+wb = openpyxl.Workbook()
+ws = wb.active
 
+for row in data:
+    ws.append(row)
 
+wb.save('output1.xlsx')
