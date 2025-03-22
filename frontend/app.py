@@ -28,19 +28,19 @@ def index():
     category_counts = df['category'].value_counts()
     bar_fig = px.bar(category_counts, x=category_counts.index, y=category_counts.values, 
                       labels={'x': 'Категория', 'y': 'Количество'}, 
-                      title='Распределение отзывов по категориям')
+                      title='')
     bar_chart = bar_fig.to_html(full_html=False)
 
     # Создание pie chart
     pie_fig = px.pie(category_counts, values=category_counts.values, names=category_counts.index, 
-                     title='Распределение отзывов по категориям')
+                     title='')
     pie_chart = pie_fig.to_html(full_html=False)
 
     # Создание heatmap
     heatmap_fig = px.imshow(
         heatmap_df.set_index('category'), 
-        labels=dict(x="Параметры", y="Категории", color="Интенсивность"),
-        title="Heatmap отзывов по категориям",
+        labels=dict(x="Параметры", y="Категории", color="Степень недовольства"),
+        title="",
         color_continuous_scale=[[0, 'blue'], [1, 'red']],  # Цветовая шкала: синий -> красный
         width=800,  # Ширина heatmap
         height=600  # Высота heatmap
