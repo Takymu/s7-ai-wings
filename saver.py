@@ -1,16 +1,16 @@
 from smolagents import Tool
 
-class Memory(Tool):
-    name = "saving responses tool"
+class SavingResponsesTool(Tool):
+    name = "saving_responses_tool"
     description = """
     This tool save responses until there are enough responses, 
     in this case you will informed about it by return value"""
     
     inputs = {
         "response": {
-            "type": "tuple",
-            "description": """ tuple should consist of 3 elements
-            element 1 is user emotion (e.g. positive or negative or neutral), 
+            "type": "any",
+            "description": """ tuple should consist of 3 elements. Only three.
+            element 1 is user emotion (e.g. positive or negative or neutral - only theese), 
             element 2 is theme of the user's response (one or two words),
             element 3 is summary of the user's response (sentence or two)""",
         }
@@ -18,16 +18,20 @@ class Memory(Tool):
 
     output_type = "string"
 
-    def __init__(self, maxlen: int):
-        self.response_list = []
-        self.maxlen = maxlen
 
-    def forward(self, response: tuple):
+    def __init__(self):
+        super().__init__()
+        self.maxlen = 200
+        self.response_list = []
+
+    def forward(self, response):
         self.response_list.append(response)
-        print('response appended: ', response)
         if len(self.response_list) <= self.maxlen:
-            return 'we need more responses, add them from this page or go on another'
+            return f'{len(self.response_list)} responses from {self.maxlen} we need more responses, add them only from web pages.'
         else:
+            print(f'end. response list of {self.maxlen} responses was made.')
+            for row in self.response_list:
+                print(row)
             return 'it is enough of responses, you can stop adding them and provide final answer'
 
     def get_response_list(self):

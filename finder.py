@@ -34,24 +34,24 @@ def scroll_down(driver, min_scroll=200, max_scroll=500):
     actions.perform()
     time.sleep(random.uniform(1, 3))
 
-options = webdriver.FirefoxOptions()
-options.add_argument(f"user-agent={get_random_user_agent()}")
 
-driver = webdriver.Remote(
-    command_executor='http://127.0.0.1:4444',  # GeckoDriver
-    options=options
-)
 
 @tool
 def search_tool(request: str) -> str:
     '''
     This tool can be used for search any query in the internet by browser.
     Args:
-        request - literally request that you can type in browser line
+        request: literally request that you can type in browser line
     Returns:
         string that contatins 10 first results of web search with links to them
     '''
+    options = webdriver.FirefoxOptions()
+    options.add_argument(f"user-agent={get_random_user_agent()}")
 
+    driver = webdriver.Remote(
+        command_executor='http://127.0.0.1:4444',  # GeckoDriver
+        options=options
+    )
     try:
         # === Your Automation Code ===
         driver.get("https://duckduckgo.com/")
@@ -89,7 +89,7 @@ def search_tool(request: str) -> str:
                 final_res += f"Title: {title}\n"
                 final_res += f"Link: {link}\n"
                 final_res += "-" * 20 + '\n'
-                random_delay()
+                random_delay(0.1, 1)
             except Exception as inner_e:
                 print(f"error: {inner_e}")
 
