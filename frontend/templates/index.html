@@ -1,23 +1,490 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Статистика отзывов S7</title>
+    <title>S7 AI Wings - Статистика отзывов</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --s7-green: #94c948;
+            --s7-dark-green: #6b9331;
+            --s7-light-green: #c5e698;
+            --s7-gray: #58595b;
+            --s7-light-gray: #f2f2f2;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--s7-light-gray);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 5px solid var(--s7-green);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-name {
+            color: var(--s7-gray);
+        }
+
+        .logout-button {
+            background-color: var(--s7-green);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+
+        .logout-button:hover {
+            background-color: var(--s7-dark-green);
+        }
+
+        h1 {
+            color: var(--s7-gray);
+            margin: 0;
+        }
+        
+        .charts-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            margin: 0 auto;
+            width: 80%;  
+            max-width: 1200px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 5px solid var(--s7-green);
+            height: 500px;  
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-container h2 {
+            color: var(--s7-gray);
+            font-size: 24px;
+            margin: 0 0 20px 0;
+            text-align: center;
+        }
+
+        .chart-wrapper {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        #error {
+            color: #d32f2f;
+            background: #fde7e7;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        @media (max-width: 1200px) {
+            .charts-grid {
+                width: 90%;  
+            }
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid {
+                width: 95%;
+            }
+            
+            .chart-container {
+                height: 400px;
+                padding: 20px;
+            }
+
+            .chart-container h2 {
+                font-size: 20px;
+                margin: 0 0 15px 0;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Статистика отзывов S7</h1>
-    <div>
-        <h2>Распределение отзывов по категориям</h2>
-        {{ bar_chart|safe }}
+    <div class="header">
+        <h1>Статистика отзывов S7</h1>
+        <div class="user-info">
+            <span class="user-name">{{ user.name }}</span>
+            <a href="{{ url_for('logout') }}" class="logout-button">Выйти</a>
+        </div>
     </div>
-    <div>
-        <h2>Распределение отзывов по категориям</h2>
-        {{ pie_chart|safe }}
+
+    <div id="error"></div>
+    
+    <div class="charts-grid">
+        <div class="chart-container">
+            <h2>Распределение отзывов по категориям</h2>
+            <div class="chart-wrapper">
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <h2>Процентное соотношение категорий</h2>
+            <div class="chart-wrapper">
+                <canvas id="pieChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <h2>Распределение оценок по категориям</h2>
+            <div class="chart-wrapper">
+                <canvas id="stackedBarChart"></canvas>
+            </div>
+        </div>
     </div>
-    <div>
-        <h2>Heatmap отзывов по категориям</h2>
-        {{ heatmap_chart|safe }}
-    </div>
+
+    <script>
+        // Функция для генерации цветов
+        function generateColors(count) {
+            const baseColors = [
+                'rgb(94, 201, 72)',     // зеленый
+                'rgb(54, 162, 235)',    // синий
+                'rgb(255, 159, 64)',    // оранжевый
+                'rgb(153, 102, 255)',   // фиолетовый
+                'rgb(255, 99, 132)',    // красный
+                'rgb(75, 192, 192)',    // бирюзовый
+                'rgb(255, 205, 86)',    // желтый
+                'rgb(201, 103, 207)',   // розовый
+                'rgb(129, 199, 111)',   // светло-зеленый
+                'rgb(95, 167, 219)',    // голубой
+                'rgb(238, 142, 123)',   // лососевый
+                'rgb(176, 122, 217)',   // сиреневый
+                'rgb(255, 181, 90)',    // светло-оранжевый
+                'rgb(112, 187, 187)',   // морская волна
+                'rgb(235, 177, 183)'    // пыльная роза
+            ];
+
+            if (count <= baseColors.length) {
+                return baseColors.slice(0, count);
+            }
+
+            const colors = [...baseColors];
+            for (let i = baseColors.length; i < count; i++) {
+                // Генерируем случайные яркие цвета
+                const h = Math.floor(Math.random() * 360);  // Оттенок
+                const s = Math.floor(Math.random() * 20) + 60;  // Насыщенность 60-80%
+                const l = Math.floor(Math.random() * 20) + 45;  // Яркость 45-65%
+                colors.push(`hsl(${h}, ${s}%, ${l}%)`);
+            }
+            return colors;
+        }
+
+        fetch('/api/data')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('error').textContent = 'Ошибка: ' + data.error;
+                    document.getElementById('error').style.display = 'block';
+                    return;
+                }
+
+                const categories = Object.keys(data.categories);
+                const counts = Object.values(data.categories);
+
+                if (categories.length === 0) {
+                    document.getElementById('error').textContent = 'Нет данных для отображения';
+                    document.getElementById('error').style.display = 'block';
+                    return;
+                }
+
+                const colors = generateColors(categories.length);
+                const total = counts.reduce((a, b) => a + b, 0);
+
+                // Pie Chart
+                new Chart(document.getElementById('pieChart'), {
+                    type: 'pie',
+                    data: {
+                        labels: categories,
+                        datasets: [{
+                            data: counts,
+                            backgroundColor: colors
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: {
+                                    boxWidth: 15,
+                                    padding: 15,
+                                    color: 'rgb(88, 89, 91)',
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                titleColor: 'rgb(88, 89, 91)',
+                                bodyColor: 'rgb(88, 89, 91)',
+                                borderColor: 'rgb(88, 89, 91)',
+                                borderWidth: 1,
+                                padding: 10,
+                                bodyFont: {
+                                    size: 14
+                                },
+                                titleFont: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                callbacks: {
+                                    label: function(context) {
+                                        const value = context.raw;
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return ` ${context.label}: ${value} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    plugins: [{
+                        afterDraw: function(chart) {
+                            const ctx = chart.ctx;
+                            ctx.save();
+                            const centerX = chart.chartArea.left + (chart.chartArea.right - chart.chartArea.left) / 2;
+                            const centerY = chart.chartArea.top + (chart.chartArea.bottom - chart.chartArea.top) / 2;
+
+                            chart.data.datasets.forEach((dataset, i) => {
+                                const meta = chart.getDatasetMeta(i);
+                                meta.data.forEach((element, index) => {
+                                    // Не отображаем проценты если сегмент в состоянии hover
+                                    if (element.active) return;
+                                    
+                                    const data = dataset.data[index];
+                                    const percentage = ((data / total) * 100).toFixed(1) + '%';
+                                    
+                                    // Вычисляем позицию для текста
+                                    const angle = element.startAngle + (element.endAngle - element.startAngle) / 2;
+                                    const radius = element.outerRadius * 0.8; // Увеличиваем радиус до 80%
+                                    
+                                    const x = centerX + Math.cos(angle) * radius;
+                                    const y = centerY + Math.sin(angle) * radius;
+                                    
+                                    // Настройка стиля текста
+                                    ctx.font = 'bold 14px Arial';
+                                    ctx.fillStyle = 'white';
+                                    ctx.textAlign = 'center';
+                                    ctx.textBaseline = 'middle';
+                                    
+                                    // Добавляем обводку для лучшей читаемости
+                                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                                    ctx.lineWidth = 3;
+                                    ctx.strokeText(percentage, x, y);
+                                    ctx.fillText(percentage, x, y);
+                                });
+                            });
+                            ctx.restore();
+                        }
+                    }]
+                });
+
+                // Bar Chart
+                new Chart(document.getElementById('barChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: categories,
+                        datasets: [{
+                            label: 'Количество отзывов',
+                            data: counts,
+                            backgroundColor: colors.map(color => color.replace(')', ', 0.8)').replace('rgb', 'rgba'))
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(148, 201, 72, 0.1)'
+                                },
+                                ticks: {
+                                    color: 'rgb(88, 89, 91)',
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    color: 'rgb(88, 89, 91)',
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: 'rgb(88, 89, 91)',
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                titleColor: 'rgb(88, 89, 91)',
+                                bodyColor: 'rgb(88, 89, 91)',
+                                borderColor: 'rgb(88, 89, 91)',
+                                borderWidth: 1,
+                                padding: 10,
+                                bodyFont: {
+                                    size: 14
+                                },
+                                titleFont: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                if (data.heatmap && data.heatmap.length > 0) {
+                    // Stacked Bar Chart
+                    const heatmapData = data.heatmap;
+                    const categories = heatmapData.map(d => d.category);
+                    
+                    new Chart(document.getElementById('stackedBarChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: categories,
+                            datasets: [
+                                {
+                                    label: 'Положительные',
+                                    data: heatmapData.map(d => d.positive),
+                                    backgroundColor: 'rgb(94, 201, 72)'  // зеленый
+                                },
+                                {
+                                    label: 'Нейтральные',
+                                    data: heatmapData.map(d => d.neutral),
+                                    backgroundColor: 'rgb(255, 205, 86)'  // желтый
+                                },
+                                {
+                                    label: 'Отрицательные',
+                                    data: heatmapData.map(d => d.negative),
+                                    backgroundColor: 'rgb(255, 99, 132)'  // красный
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    stacked: true,
+                                    grid: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        color: 'rgb(88, 89, 91)',
+                                        font: {
+                                            size: 12
+                                        }
+                                    }
+                                },
+                                y: {
+                                    stacked: true,
+                                    beginAtZero: true,
+                                    max: 1,
+                                    grid: {
+                                        color: 'rgba(148, 201, 72, 0.1)'
+                                    },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return (value * 100) + '%';
+                                        },
+                                        color: 'rgb(88, 89, 91)',
+                                        font: {
+                                            size: 12
+                                        }
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    labels: {
+                                        color: 'rgb(88, 89, 91)',
+                                        font: {
+                                            size: 12
+                                        }
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                    titleColor: 'rgb(88, 89, 91)',
+                                    bodyColor: 'rgb(88, 89, 91)',
+                                    borderColor: 'rgb(88, 89, 91)',
+                                    borderWidth: 1,
+                                    padding: 10,
+                                    bodyFont: {
+                                        size: 14
+                                    },
+                                    titleFont: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    },
+                                    callbacks: {
+                                        label: function(context) {
+                                            const value = context.raw;
+                                            const percentage = (value * 100).toFixed(1);
+                                            return `${context.dataset.label}: ${percentage}%`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                document.getElementById('error').textContent = 'Ошибка при загрузке данных: ' + error;
+                document.getElementById('error').style.display = 'block';
+            });
+    </script>
 </body>
 </html>
