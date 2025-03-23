@@ -52,14 +52,14 @@
 ### Локальное развертывание
 
 1. Клонирование репозитория
-##git clone <https://github.com/Takymu/s7-ai-wings>##
-##cd S7-AI-Wings##
+`git clone <https://github.com/Takymu/s7-ai-wings>`
+`cd S7-AI-Wings`
 
 2. Установка зависимостей
-##pip install -r requirements.txt##
+`pip install -r requirements.txt`
 
 3. Запуск приложения
-##python frontend/app.py##
+`python frontend/app.py`
 
 ### Развертывание на Vercel
 
@@ -70,7 +70,7 @@
   - api/index.py
 
 2. Развертывание
-##vercel##
+`vercel`
 
 ### Системные требования
 
