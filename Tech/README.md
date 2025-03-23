@@ -53,7 +53,6 @@
 
 1. Клонирование репозитория
 `git clone <https://github.com/Takymu/s7-ai-wings>`
-`cd S7-AI-Wings`
 
 2. Установка зависимостей
 `pip install -r requirements.txt`
